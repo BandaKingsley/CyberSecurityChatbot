@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Data.SqlClient;
-using System.Media;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
@@ -10,113 +9,72 @@ using System.Windows.Input;
 
 namespace CyberSecurityApp
 {
+    /// <summary>
+    /// Interaction logic for MainWindow.xaml - Controls Cybersecurity Hub dashboard.
+    /// </summary>
     public partial class MainWindow : Window
     {
-        // --- Session State Fields ---
         private string userName = "";
-        private bool hasAskedForName = false;
-        private string userFavoriteTopic = "None";
-        private string lastTrackedTopic = "None";
-
-        // Synchronized directly with live LocalDB instance from SSMS
+        // Connection string configured for LocalDB (Standard for PROG6221)
         private string connectionString = @"Server=(localdb)\MSSQLLocalDB;Database=SecurityLogDB;Trusted_Connection=True;TrustServerCertificate=True;";
 
-        // --- Track last tip indices to prevent duplicates ---
-        private int lastPhishingTipIndex = -1;
-        private int lastPasswordTipIndex = -1;
+        // Chatbot response sets
+        private List<string> phishingTips = new List<string> { "Always check the sender's email address.", "Avoid clicking suspicious links.", "Report phishing to IT immediately." };
+        private List<string> passwordTips = new List<string> { "Use a mix of characters.", "Use a Password Manager.", "Enable 2FA wherever possible." };
 
-        // --- Cybersecurity Advice Lists ---
-        private List<string> phishingTips = new List<string>
-        {
-            "Always check the sender's email address carefully.",
-            "Avoid clicking on suspicious links in emails.",
-            "Report phishing attempts to your IT department immediately."
-        };
+        private int currentQuestionIndex = 0, userQuizScore = 0;
 
-        private List<string> passwordTips = new List<string>
-        {
-            "Use a mix of uppercase, lowercase, numbers, and symbols.",
-            "Never reuse the same password across multiple accounts.",
-            "Change your passwords regularly to reduce risk."
-        };
-
-        // --- Quiz Engine State and Structs ---
-        private int currentQuestionIndex = 0;
-        private int userQuizScore = 0;
-
-        private struct QuizQuestion
-        {
-            public string QuestionText;
-            public string OptionA;
-            public string OptionB;
-            public string OptionC;
-            public string OptionD;
-            public string CorrectAnswer;
-        }
+        // Structured data model for Quiz questions ensuring clean data handling
+        private struct QuizQuestion { public string QuestionText, OptionA, OptionB, OptionC, OptionD, CorrectAnswer; }
 
         private List<QuizQuestion> quizQuestions = new List<QuizQuestion>
         {
-            new QuizQuestion {
-                QuestionText = "You receive an urgent email from your bank claiming your access account is locked, requesting an immediate credential reset link click. What is this?",
-                OptionA = "A routine automated security infrastructure check update.",
-                OptionB = "A standard system maintenance verification request query.",
-                OptionC = "A malicious phishing social engineering threat attempt.",
-                OptionD = "An encryption routing protocol handshake validation stream.",
-                CorrectAnswer = "C"
-            },
-            new QuizQuestion {
-                QuestionText = "Which configuration provides the strongest baseline approach for protecting user access terminal accounts from breach?",
-                OptionA = "Reusing a single complex master password pattern across all systems.",
-                OptionB = "Utilizing unique phrases coupled with Multi-Factor Authentication (MFA).",
-                OptionC = "Storing unencrypted password keys in local notepad streams.",
-                OptionD = "Disabling account lockouts to ensure constant accessibility.",
-                CorrectAnswer = "B"
-            },
-            new QuizQuestion {
-                QuestionText = "What represents the safest procedural action step when an unrecognized executable window suddenly requests administrator execution rights?",
-                OptionA = "Approve immediately to minimize background layout thread interruption.",
-                OptionB = "Deny execution and report the signature to network administrators.",
-                OptionC = "Minimize the active frame display and inspect it after several hours.",
-                OptionD = "Temporarily disable active malware system detection engines to test it.",
-                CorrectAnswer = "B"
-            }
+            new QuizQuestion { QuestionText = "Bank email says account locked. What is this?", OptionA = "Routine maintenance", OptionB = "System check", OptionC = "Malicious phishing", OptionD = "Encryption", CorrectAnswer = "C" },
+            new QuizQuestion { QuestionText = "Strongest account protection?", OptionA = "Reusing passwords", OptionB = "Unique phrases + MFA", OptionC = "Unencrypted keys", OptionD = "No lockout", CorrectAnswer = "B" },
+            new QuizQuestion { QuestionText = "Unknown executable requests admin rights?", OptionA = "Approve", OptionB = "Deny and report", OptionC = "Inspect later", OptionD = "Disable AV", CorrectAnswer = "B" },
+            new QuizQuestion { QuestionText = "Goal of Social Engineering?", OptionA = "Exploit bugs", OptionB = "Manipulate individuals", OptionC = "Brute force", OptionD = "Optimize", CorrectAnswer = "B" },
+            new QuizQuestion { QuestionText = "Indicates a secure website?", OptionA = "http://", OptionB = "Pop-ups", OptionC = "https:// and padlock", OptionD = "Asks for passwords", CorrectAnswer = "C" },
+            new QuizQuestion { QuestionText = "Danger of public Wi-Fi?", OptionA = "Slow speed", OptionB = "Data interception", OptionC = "Compatibility", OptionD = "Updates", CorrectAnswer = "B" },
+            new QuizQuestion { QuestionText = "Why use a Password Manager?", OptionA = "Sharing", OptionB = "Store unique complex passwords", OptionC = "Avoid login", OptionD = "Speed", CorrectAnswer = "B" },
+            new QuizQuestion { QuestionText = "What does MFA stand for?", OptionA = "Multi-Factor Authentication", OptionB = "Main Firewall", OptionC = "Mobile Archive", OptionD = "Master Format", CorrectAnswer = "A" },
+            new QuizQuestion { QuestionText = "Symptom of ransomware?", OptionA = "Files encrypted", OptionB = "Screen bright", OptionC = "Mouse fast", OptionD = "System fast", CorrectAnswer = "A" },
+            new QuizQuestion { QuestionText = "Handle accidental suspicious link click?", OptionA = "Do nothing", OptionB = "Disconnect and report", OptionC = "Clear history", OptionD = "Ignore", CorrectAnswer = "B" }
         };
 
-        // --- Constructor ---
         public MainWindow()
         {
             InitializeComponent();
-
             SetupInitialSystemState();
             LoadSecurityTasksFromDatabase();
             LoadAuditLogsFromDatabase();
             DisplayActiveQuizQuestion();
         }
 
-        // Method to log system activity
-        private void LogActivity(string actionDescription)
+        private void SetupInitialSystemState()
         {
-            string timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-            AuditLogListBox.Items.Add($"[{timestamp}] SUCCESS: {actionDescription}");
+            ChatHistoryBox.Text = "--- SECURITY HUB TERMINAL v1.0 ---\n\nBot: Hello! Please enter your name to start.\n\n";
+            LogActivity("Application Initialized.");
+        }
 
+        // Centralized logging method to track system events in the AuditLog database table
+        private void LogActivity(string action)
+        {
+            AuditLogListBox.Items.Add($"[{DateTime.Now:HH:mm:ss}] SUCCESS: {action}");
             try
             {
                 using (SqlConnection conn = new SqlConnection(connectionString))
                 {
                     conn.Open();
-                    string query = "INSERT INTO AuditLogs (Timestamp, ActionDetails) VALUES (@time, @details)";
-                    using (SqlCommand cmd = new SqlCommand(query, conn))
+                    // Using SQL parameters to sanitize input and prevent SQL Injection attacks
+                    using (SqlCommand cmd = new SqlCommand("INSERT INTO AuditLogs (Timestamp, ActionDetails) VALUES (@t, @d)", conn))
                     {
-                        cmd.Parameters.AddWithValue("@time", DateTime.Now);
-                        cmd.Parameters.AddWithValue("@details", actionDescription);
+                        cmd.Parameters.AddWithValue("@t", DateTime.Now);
+                        cmd.Parameters.AddWithValue("@d", action);
                         cmd.ExecuteNonQuery();
                     }
                 }
             }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Log storage error: {ex.Message}");
-            }
+            catch { }
         }
 
         private void LoadAuditLogsFromDatabase()
@@ -126,164 +84,37 @@ namespace CyberSecurityApp
                 using (SqlConnection conn = new SqlConnection(connectionString))
                 {
                     conn.Open();
-                    string query = "SELECT Timestamp, ActionDetails FROM AuditLogs ORDER BY Timestamp ASC";
-                    using (SqlCommand cmd = new SqlCommand(query, conn))
+                    using (SqlCommand cmd = new SqlCommand("SELECT Timestamp, ActionDetails FROM AuditLogs ORDER BY Timestamp ASC", conn))
                     using (SqlDataReader reader = cmd.ExecuteReader())
-                    {
-                        AuditLogListBox.Items.Clear();
-                        while (reader.Read())
-                        {
-                            string logEntry = $"[{reader["Timestamp"]}] SUCCESS: {reader["ActionDetails"]}";
-                            AuditLogListBox.Items.Add(logEntry);
-                        }
-                    }
+                        while (reader.Read()) AuditLogListBox.Items.Add($"[{reader["Timestamp"]}] SUCCESS: {reader["ActionDetails"]}");
                 }
             }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"History load failed: {ex.Message}");
-            }
+            catch { }
         }
 
-        // --- Setup Initial State ---
-        private void SetupInitialSystemState()
-        {
-            ChatHistoryBox.Clear();
-            ChatHistoryBox.Text += "--------------------------------------------------------\n";
-            ChatHistoryBox.Text += "  CYBERSECURITY RISK ASSESSMENT HUB TERMINAL v1.0       \n";
-            ChatHistoryBox.Text += "--------------------------------------------------------\n\n";
+        private void SendButton_Click(object sender, RoutedEventArgs e) => ExecuteChat();
+        private void ChatInputBox_KeyDown(object sender, KeyEventArgs e) { if (e.Key == Key.Enter) ExecuteChat(); }
 
-            ChatHistoryBox.Text += "Bot: Hello! Welcome to the cybersecurity hub. Before we begin, what is your name?\n\n";
-
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            {
-                try
-                {
-                    SoundPlayer player = new SoundPlayer("greeting.wav");
-                    player.Play();
-                }
-                catch (Exception)
-                {
-                    ChatHistoryBox.Text += "[System Log]: Audio stream initialization verified.\n\n";
-                }
-            }
-
-            LogActivity("Application initialized and secure terminal interface opened.");
-        }
-
-        private void SendButton_Click(object sender, RoutedEventArgs e)
-        {
-            ExecuteChatSubmission();
-        }
-
-        private void ChatInputBox_KeyDown(object sender, KeyEventArgs e)
-        {
-            if (e.Key == Key.Enter)
-            {
-                ExecuteChatSubmission();
-                e.Handled = true;
-            }
-        }
-
-        // Core method to handle chat submissions and state shifts
-        private void ExecuteChatSubmission()
+        private void ExecuteChat()
         {
             string input = ChatInputBox.Text.Trim();
-            if (string.IsNullOrEmpty(input))
-                return;
-
+            if (string.IsNullOrEmpty(input)) return;
             if (string.IsNullOrEmpty(userName))
             {
                 userName = input;
-                hasAskedForName = true;
-                ChatHistoryBox.AppendText($"You: {input}\n");
-                ChatHistoryBox.AppendText($"Bot: Welcome, {userName}! Type 'phishing' or 'password' to begin, or let me know if you are feeling 'worried'.\n\n");
-
-                LogActivity($"New user registration established for operator signature: '{userName}'");
-
-                ChatInputBox.Clear();
-                ChatHistoryBox.ScrollToEnd();
-                return;
-            }
-
-            ChatHistoryBox.AppendText($"You: {input}\n");
-
-            ProcessConversationNLP(input.ToLower());
-
-            LogActivity($"Chatbot NLP engine executed evaluation for input string token: '{input}'");
-
-            ChatInputBox.Clear();
-            ChatHistoryBox.ScrollToEnd();
-        }
-
-        // --- Simulated Keyword Detection (NLP) Engine ---
-        private void ProcessConversationNLP(string lowered)
-        {
-            Random rand = new Random();
-
-            if (lowered.Contains("worried") || lowered.Contains("scared") || lowered.Contains("hacked"))
-            {
-                ChatHistoryBox.AppendText($"Bot: I completely understand your concern, {userName}. Cyber threats can be stressful. Let's look at a helpful tip to secure your space:\n");
-                int index = rand.Next(phishingTips.Count);
-                ChatHistoryBox.AppendText($"Bot: [Advice] {phishingTips[index]}\n\n");
-            }
-            else if (lowered.Contains("phishing") || lowered.Contains("scam"))
-            {
-                lastTrackedTopic = "phishing";
-                userFavoriteTopic = "phishing";
-
-                ChatHistoryBox.AppendText($"Bot: Accessing the phishing awareness database modules. Review this tip:\n");
-
-                int index;
-                do { index = rand.Next(phishingTips.Count); } while (index == lastPhishingTipIndex);
-                lastPhishingTipIndex = index;
-
-                ChatHistoryBox.AppendText($"Bot: [Phishing Tip] {phishingTips[index]}\n\n");
-            }
-            else if (lowered.Contains("password"))
-            {
-                lastTrackedTopic = "password";
-                userFavoriteTopic = "password";
-
-                ChatHistoryBox.AppendText($"Bot: Accessing identity and access management advice list. Review this profile configuration tip:\n");
-
-                int index;
-                do { index = rand.Next(passwordTips.Count); } while (index == lastPasswordTipIndex);
-                lastPasswordTipIndex = index;
-
-                ChatHistoryBox.AppendText($"Bot: [Credential Tip] {passwordTips[index]}\n\n");
-            }
-            else if (lowered.Contains("another tip") || lowered.Contains("tell me more"))
-            {
-                if (lastTrackedTopic == "phishing")
-                {
-                    int index = rand.Next(phishingTips.Count);
-                    ChatHistoryBox.AppendText($"Bot: Here is another phishing baseline check tip: {phishingTips[index]}\n\n");
-                }
-                else if (lastTrackedTopic == "password")
-                {
-                    int index = rand.Next(passwordTips.Count);
-                    ChatHistoryBox.AppendText($"Bot: Here is another access management validation tip: {passwordTips[index]}\n\n");
-                }
-                else
-                {
-                    ChatHistoryBox.AppendText("Bot: I'm not sure which topic context you are referring to yet. Try asking explicitly about 'phishing' or 'passwords' first.\n\n");
-                }
-            }
-            else if (lowered.Contains("remember"))
-            {
-                ChatHistoryBox.AppendText($"Bot: Querying system active volatile states...\n");
-                ChatHistoryBox.AppendText($"Bot: Active operator account profile verified: Name: {userName} | Logged Focus Preference: {userFavoriteTopic}\n\n");
+                ChatHistoryBox.AppendText($"You: {input}\nBot: Welcome {userName}! Ask me about 'phishing' or 'password'.\n\n");
             }
             else
             {
-                ChatHistoryBox.AppendText("Bot: Input token unmapped. Try utilizing core context keywords like 'password', 'phishing', or run a system state inquiry using 'remember'.\n\n");
+                ChatHistoryBox.AppendText($"You: {input}\n");
+                Random rand = new Random();
+                if (input.ToLower().Contains("phishing")) ChatHistoryBox.AppendText($"Bot: {phishingTips[rand.Next(phishingTips.Count)]}\n\n");
+                else if (input.ToLower().Contains("password")) ChatHistoryBox.AppendText($"Bot: {passwordTips[rand.Next(passwordTips.Count)]}\n\n");
+                else ChatHistoryBox.AppendText("Bot: I did not understand that. Try 'phishing' or 'password'.\n\n");
             }
+            ChatInputBox.Clear();
+            LogActivity("Chat interaction processed.");
         }
-
-        // ==========================================
-        //  DATABASE METHODS FOR THE TASK MANAGER TAB
-        // ==========================================
 
         private void LoadSecurityTasksFromDatabase()
         {
@@ -292,129 +123,72 @@ namespace CyberSecurityApp
                 using (SqlConnection conn = new SqlConnection(connectionString))
                 {
                     conn.Open();
-                    string query = "SELECT TaskID as 'ID', TaskName as 'Action Item', Category as 'Domain', Priority, DateAssigned as 'Timestamp' FROM SecurityTasks";
-
-                    using (SqlCommand cmd = new SqlCommand(query, conn))
+                    using (SqlDataReader reader = new SqlCommand("SELECT TaskName, Category, Priority FROM SecurityTasks", conn).ExecuteReader())
                     {
-                        using (SqlDataReader reader = cmd.ExecuteReader())
-                        {
-                            System.Data.DataTable dt = new System.Data.DataTable();
-                            dt.Load(reader);
-                            TasksDataGrid.ItemsSource = dt.DefaultView;
-                        }
+                        System.Data.DataTable dt = new System.Data.DataTable();
+                        dt.Load(reader);
+                        TasksDataGrid.ItemsSource = dt.DefaultView;
                     }
                 }
             }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Database Link Offline: {ex.Message}", "System Stream Status", MessageBoxButton.OK, MessageBoxImage.Warning);
-            }
+            catch (Exception ex) { MessageBox.Show("Database Connection Error: " + ex.Message); }
         }
 
         private void AddTaskButton_Click(object sender, RoutedEventArgs e)
         {
-            string taskName = TaskNameInput.Text.Trim();
-            string category = (CategoryComboBox.SelectedItem as ComboBoxItem)?.Content.ToString();
-            string priority = (PriorityComboBox.SelectedItem as ComboBoxItem)?.Content.ToString();
-
-            if (string.IsNullOrEmpty(taskName))
-            {
-                MessageBox.Show("Please specify a baseline task action description before committing.", "Validation Alert", MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
-
+            string task = TaskNameInput.Text.Trim();
+            if (string.IsNullOrEmpty(task)) { MessageBox.Show("Please enter a task name."); return; }
             try
             {
                 using (SqlConnection conn = new SqlConnection(connectionString))
                 {
                     conn.Open();
-                    string query = "INSERT INTO SecurityTasks (TaskName, Category, Priority) VALUES (@name, @cat, @pri)";
-
-                    using (SqlCommand cmd = new SqlCommand(query, conn))
+                    using (SqlCommand cmd = new SqlCommand("INSERT INTO SecurityTasks (TaskName, Category, Priority) VALUES (@n, @c, @p)", conn))
                     {
-                        cmd.Parameters.AddWithValue("@name", taskName ?? (object)DBNull.Value);
-                        cmd.Parameters.AddWithValue("@cat", category ?? (object)DBNull.Value);
-                        cmd.Parameters.AddWithValue("@pri", priority ?? (object)DBNull.Value);
+                        cmd.Parameters.AddWithValue("@n", task);
+                        cmd.Parameters.AddWithValue("@c", (CategoryComboBox.SelectedItem as ComboBoxItem)?.Content.ToString());
+                        cmd.Parameters.AddWithValue("@p", (PriorityComboBox.SelectedItem as ComboBoxItem)?.Content.ToString());
                         cmd.ExecuteNonQuery();
                     }
                 }
-
-                TaskNameInput.Clear();
+                LogActivity("Task Added: " + task);
                 LoadSecurityTasksFromDatabase();
             }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Failed to append data log stream: {ex.Message}", "Database Execution Error", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
+            catch (Exception ex) { MessageBox.Show("Error committing task: " + ex.Message); }
         }
-
-        // ==========================================
-        //         KNOWLEDGE QUIZ CORE LOGIC
-        // ==========================================
 
         private void DisplayActiveQuizQuestion()
         {
             if (currentQuestionIndex < quizQuestions.Count)
             {
                 var q = quizQuestions[currentQuestionIndex];
-                QuizProgressText.Text = $"Question {currentQuestionIndex + 1} of {quizQuestions.Count}";
-                QuizScoreText.Text = $"Current Score: {userQuizScore}";
-
+                QuizProgressText.Text = $"Question {currentQuestionIndex + 1} of 10";
                 QuestionTextBlock.Text = q.QuestionText;
-                OptionARadio.Content = q.OptionA;
-                OptionBRadio.Content = q.OptionB;
-                OptionCRadio.Content = q.OptionC;
-                OptionDRadio.Content = q.OptionD;
-
-                OptionARadio.IsChecked = false;
-                OptionBRadio.IsChecked = false;
-                OptionCRadio.IsChecked = false;
-                OptionDRadio.IsChecked = false;
-
-                SubmitAnswerButton.Content = (currentQuestionIndex == quizQuestions.Count - 1) ? "Finish Quiz" : "Submit Answer";
+                OptionARadio.Content = q.OptionA; OptionBRadio.Content = q.OptionB;
+                OptionCRadio.Content = q.OptionC; OptionDRadio.Content = q.OptionD;
             }
         }
 
         private void SubmitAnswerButton_Click(object sender, RoutedEventArgs e)
         {
-            string selectedLetter = "";
-            if (OptionARadio.IsChecked == true) selectedLetter = "A";
-            else if (OptionBRadio.IsChecked == true) selectedLetter = "B";
-            else if (OptionCRadio.IsChecked == true) selectedLetter = "C";
-            else if (OptionDRadio.IsChecked == true) selectedLetter = "D";
-
-            if (string.IsNullOrEmpty(selectedLetter))
-            {
-                MessageBox.Show("Please select an answer token response before submitting.", "Quiz Validation", MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
-
-            if (selectedLetter == quizQuestions[currentQuestionIndex].CorrectAnswer)
-            {
-                userQuizScore += 10;
-                MessageBox.Show("Correct! Security metrics validated successfully.", "Assessment Signal", MessageBoxButton.OK, MessageBoxImage.Information);
-            }
-            else
-            {
-                MessageBox.Show($"Incorrect. The optimal strategy was Option {quizQuestions[currentQuestionIndex].CorrectAnswer}.", "Assessment Signal", MessageBoxButton.OK, MessageBoxImage.Warning);
-            }
+            string selected = (OptionARadio.IsChecked == true) ? "A" : (OptionBRadio.IsChecked == true) ? "B" : (OptionCRadio.IsChecked == true) ? "C" : (OptionDRadio.IsChecked == true) ? "D" : "";
+            if (string.IsNullOrEmpty(selected)) { MessageBox.Show("Please select an option."); return; }
+            if (selected == quizQuestions[currentQuestionIndex].CorrectAnswer) userQuizScore += 10;
 
             currentQuestionIndex++;
-
             if (currentQuestionIndex < quizQuestions.Count)
             {
                 DisplayActiveQuizQuestion();
+                QuizScoreText.Text = $"Current Score: {userQuizScore}";
             }
             else
             {
-                QuizProgressText.Text = "Quiz Completed!";
-                QuizScoreText.Text = $"Final Score: {userQuizScore}/{quizQuestions.Count * 10}";
-                MessageBox.Show($"Assessment Complete!\nYour Final Score State: {userQuizScore} points.", "Audit Profile Terminated", MessageBoxButton.OK, MessageBoxImage.Asterisk);
-
-                currentQuestionIndex = 0;
-                userQuizScore = 0;
+                MessageBox.Show($"Quiz Complete! Final Score: {userQuizScore}");
+                currentQuestionIndex = 0; userQuizScore = 0;
                 DisplayActiveQuizQuestion();
+                QuizScoreText.Text = "Current Score: 0";
             }
+            LogActivity("Quiz question completed.");
         }
     }
 }

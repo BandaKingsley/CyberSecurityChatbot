@@ -1,0 +1,22 @@
+-- Create the Database
+CREATE DATABASE SecurityLogDB;
+GO
+
+USE SecurityLogDB;
+GO
+
+-- Create Security Tasks Table
+CREATE TABLE SecurityTasks (
+    TaskID INT IDENTITY(1,1) PRIMARY KEY,
+    TaskName NVARCHAR(255) NOT NULL,
+    Category NVARCHAR(100),
+    Priority NVARCHAR(50),
+    DateAssigned DATETIME DEFAULT GETDATE()
+);
+
+-- Create Audit Logs Table
+CREATE TABLE AuditLogs (
+    LogID INT IDENTITY(1,1) PRIMARY KEY,
+    Timestamp DATETIME DEFAULT GETDATE(),
+    ActionDetails NVARCHAR(MAX) NOT NULL
+);
