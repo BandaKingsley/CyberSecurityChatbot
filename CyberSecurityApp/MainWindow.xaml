@@ -28,6 +28,7 @@
         </Border>
 
         <TabControl Grid.Row="1" Margin="10">
+            <!-- TAB 1: SECURITY CHATBOT -->
             <TabItem Header="Security Chatbot">
                 <Grid Margin="10">
                     <Grid.RowDefinitions>
@@ -71,6 +72,7 @@
                 </Grid>
             </TabItem>
 
+            <!-- TAB 2: TASK MANAGER -->
             <TabItem Header="Task Manager">
                 <Grid Margin="15">
                     <Grid.RowDefinitions>
@@ -123,6 +125,7 @@
                 </Grid>
             </TabItem>
 
+            <!-- TAB 3: KNOWLEDGE QUIZ -->
             <TabItem Header="Knowledge Quiz">
                 <Grid Margin="20">
                     <Grid.RowDefinitions>
@@ -154,8 +157,19 @@
                 </Grid>
             </TabItem>
 
+            <!-- TAB 4: ACTIVITY AUDITOR -->
             <TabItem Header="Activity Auditor">
-                <Grid>
+                <Grid Margin="15">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" Text="Live Application Security Logs:" FontWeight="Bold" FontSize="14" Foreground="#2C3E50" Margin="0,0,0,10"/>
+
+                    <ListBox x:Name="AuditLogListBox" Grid.Row="1" 
+                             Background="#F8F9FA" BorderBrush="#BDC3C7" BorderThickness="1"
+                             FontFamily="Consolas" FontSize="12" Padding="10"/>
                 </Grid>
             </TabItem>
         </TabControl>
