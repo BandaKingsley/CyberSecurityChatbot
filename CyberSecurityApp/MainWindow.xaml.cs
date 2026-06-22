@@ -97,10 +97,28 @@ namespace CyberSecurityApp
             DisplayActiveQuizQuestion();
         }
 
+        // --- NEW: Activity Logger Method ---
+        private void LogActivity(string actionDescription)
+        {
+            string timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+            AuditLogListBox.Items.Add($"[{timestamp}] SUCCESS: {actionDescription}");
+        }
+
         // --- Setup Initial State ---
         private void SetupInitialSystemState()
         {
-            // Fixed: Suppresses targeted OS platform warnings smoothly
+            // Clear any existing text in chat history first
+            ChatHistoryBox.Clear();
+
+            // Append a clean divider made of hyphens
+            ChatHistoryBox.Text += "--------------------------------------------------------\n";
+            ChatHistoryBox.Text += "  CYBERSECURITY RISK ASSESSMENT HUB TERMINAL v1.0       \n";
+            ChatHistoryBox.Text += "--------------------------------------------------------\n\n";
+
+            // Ask for the user's name explicitly
+            ChatHistoryBox.Text += "Bot: Hello! Welcome to the cybersecurity hub. Before we begin, what is your name?\n\n";
+
+            // Suppresses targeted OS platform warnings smoothly for the audio stream
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
                 try
@@ -114,16 +132,8 @@ namespace CyberSecurityApp
                 }
             }
 
-            // Clear any existing text in chat history
-            ChatHistoryBox.Clear();
-
-            // Append a clean divider made of hyphens
-            ChatHistoryBox.Text += "--------------------------------------------------------\n";
-            ChatHistoryBox.Text += "  CYBERSECURITY RISK ASSESSMENT HUB TERMINAL v1.0       \n";
-            ChatHistoryBox.Text += "--------------------------------------------------------\n\n";
-
-            // Ask for the user's name explicitly
-            ChatHistoryBox.Text += "Bot: Hello! Welcome to the cybersecurity hub. Before we begin, what is your name?\n\n";
+            // Explicitly commit the initial launch event to our new tab tracker
+            LogActivity("Application initialized and secure terminal interface opened.");
         }
 
         private void SendButton_Click(object sender, RoutedEventArgs e)
