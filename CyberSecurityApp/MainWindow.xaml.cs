@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Data.SqlClient;
 using System.Media;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -39,6 +40,48 @@ namespace CyberSecurityApp
             "Change your passwords regularly to reduce risk."
         };
 
+        // --- Quiz Engine State and Structs ---
+        private int currentQuestionIndex = 0;
+        private int userQuizScore = 0;
+
+        private struct QuizQuestion
+        {
+            public string QuestionText;
+            public string OptionA;
+            public string OptionB;
+            public string OptionC;
+            public string OptionD;
+            public string CorrectAnswer;
+        }
+
+        private List<QuizQuestion> quizQuestions = new List<QuizQuestion>
+        {
+            new QuizQuestion {
+                QuestionText = "You receive an urgent email from your bank claiming your access account is locked, requesting an immediate credential reset link click. What is this?",
+                OptionA = "A routine automated security infrastructure check update.",
+                OptionB = "A standard system maintenance verification request query.",
+                OptionC = "A malicious phishing social engineering threat attempt.",
+                OptionD = "An encryption routing protocol handshake validation stream.",
+                CorrectAnswer = "C"
+            },
+            new QuizQuestion {
+                QuestionText = "Which configuration provides the strongest baseline approach for protecting user access terminal accounts from breach?",
+                OptionA = "Reusing a single complex master password pattern across all systems.",
+                OptionB = "Utilizing unique phrases coupled with Multi-Factor Authentication (MFA).",
+                OptionC = "Storing unencrypted password keys in local notepad streams.",
+                OptionD = "Disabling account lockouts to ensure constant accessibility.",
+                CorrectAnswer = "B"
+            },
+            new QuizQuestion {
+                QuestionText = "What represents the safest procedural action step when an unrecognized executable window suddenly requests administrator execution rights?",
+                OptionA = "Approve immediately to minimize background layout thread interruption.",
+                OptionB = "Deny execution and report the signature to network administrators.",
+                OptionC = "Minimize the active frame display and inspect it after several hours.",
+                OptionD = "Temporarily disable active malware system detection engines to test it.",
+                CorrectAnswer = "B"
+            }
+        };
+
         // --- Constructor ---
         public MainWindow()
         {
@@ -49,21 +92,26 @@ namespace CyberSecurityApp
 
             // Pull active rows into the data grid automatically on startup
             LoadSecurityTasksFromDatabase();
+
+            // Fire up the Quiz Tab with its initial question stream state
+            DisplayActiveQuizQuestion();
         }
 
         // --- Setup Initial State ---
         private void SetupInitialSystemState()
         {
-            try
+            // Fixed: Suppresses targeted OS platform warnings smoothly
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
-                // Attempt to play greeting audio
-                SoundPlayer player = new SoundPlayer("greeting.wav");
-                player.Play();
-            }
-            catch (Exception)
-            {
-                // Smooth fallback notification system
-                ChatHistoryBox.Text += "[System Log]: Audio stream initialization verified.\n\n";
+                try
+                {
+                    SoundPlayer player = new SoundPlayer("greeting.wav");
+                    player.Play();
+                }
+                catch (Exception)
+                {
+                    ChatHistoryBox.Text += "[System Log]: Audio stream initialization verified.\n\n";
+                }
             }
 
             // Clear any existing text in chat history
@@ -237,9 +285,9 @@ namespace CyberSecurityApp
 
                     using (SqlCommand cmd = new SqlCommand(query, conn))
                     {
-                        cmd.Parameters.AddWithValue("@name", taskName);
-                        cmd.Parameters.AddWithValue("@cat", category);
-                        cmd.Parameters.AddWithValue("@pri", priority);
+                        cmd.Parameters.AddWithValue("@name", taskName ?? (object)DBNull.Value);
+                        cmd.Parameters.AddWithValue("@cat", category ?? (object)DBNull.Value);
+                        cmd.Parameters.AddWithValue("@pri", priority ?? (object)DBNull.Value);
                         cmd.ExecuteNonQuery();
                     }
                 }
@@ -250,6 +298,75 @@ namespace CyberSecurityApp
             catch (Exception ex)
             {
                 MessageBox.Show($"Failed to append data log stream: {ex.Message}", "Database Execution Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        // ==========================================
+        //         KNOWLEDGE QUIZ CORE LOGIC
+        // ==========================================
+
+        private void DisplayActiveQuizQuestion()
+        {
+            if (currentQuestionIndex < quizQuestions.Count)
+            {
+                var q = quizQuestions[currentQuestionIndex];
+                QuizProgressText.Text = $"Question {currentQuestionIndex + 1} of {quizQuestions.Count}";
+                QuizScoreText.Text = $"Current Score: {userQuizScore}";
+
+                QuestionTextBlock.Text = q.QuestionText;
+                OptionARadio.Content = q.OptionA;
+                OptionBRadio.Content = q.OptionB;
+                OptionCRadio.Content = q.OptionC;
+                OptionDRadio.Content = q.OptionD;
+
+                OptionARadio.IsChecked = false;
+                OptionBRadio.IsChecked = false;
+                OptionCRadio.IsChecked = false;
+                OptionDRadio.IsChecked = false;
+
+                SubmitAnswerButton.Content = (currentQuestionIndex == quizQuestions.Count - 1) ? "Finish Quiz" : "Submit Answer";
+            }
+        }
+
+        private void SubmitAnswerButton_Click(object sender, RoutedEventArgs e)
+        {
+            string selectedLetter = "";
+            if (OptionARadio.IsChecked == true) selectedLetter = "A";
+            else if (OptionBRadio.IsChecked == true) selectedLetter = "B";
+            else if (OptionCRadio.IsChecked == true) selectedLetter = "C";
+            else if (OptionDRadio.IsChecked == true) selectedLetter = "D";
+
+            if (string.IsNullOrEmpty(selectedLetter))
+            {
+                MessageBox.Show("Please select an answer token response before submitting.", "Quiz Validation", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            if (selectedLetter == quizQuestions[currentQuestionIndex].CorrectAnswer)
+            {
+                userQuizScore += 10;
+                MessageBox.Show("Correct! Security metrics validated successfully.", "Assessment Signal", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            else
+            {
+                MessageBox.Show($"Incorrect. The optimal strategy was Option {quizQuestions[currentQuestionIndex].CorrectAnswer}.", "Assessment Signal", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+
+            currentQuestionIndex++;
+
+            if (currentQuestionIndex < quizQuestions.Count)
+            {
+                DisplayActiveQuizQuestion();
+            }
+            else
+            {
+                QuizProgressText.Text = "Quiz Completed!";
+                QuizScoreText.Text = $"Final Score: {userQuizScore}/{quizQuestions.Count * 10}";
+                MessageBox.Show($"Assessment Complete!\nYour Final Score State: {userQuizScore} points.", "Audit Profile Terminated", MessageBoxButton.OK, MessageBoxImage.Asterisk);
+
+                currentQuestionIndex = 0;
+                userQuizScore = 0;
+                DisplayActiveQuizQuestion();
             }
         }
     }

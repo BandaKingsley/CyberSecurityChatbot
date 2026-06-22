@@ -124,7 +124,33 @@
             </TabItem>
 
             <TabItem Header="Knowledge Quiz">
-                <Grid>
+                <Grid Margin="20">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <Border Grid.Row="0" Background="#34495E" CornerRadius="4" Padding="10" Margin="0,0,0,15">
+                        <Grid>
+                            <TextBlock x:Name="QuizProgressText" Text="Question 1 of 3" Foreground="White" FontWeight="Bold" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="QuizScoreText" Text="Current Score: 0" Foreground="#2ECC71" FontWeight="Bold" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                        </Grid>
+                    </Border>
+
+                    <TextBlock x:Name="QuestionTextBlock" Grid.Row="1" Text="Question text loading..." 
+                               FontSize="16" FontWeight="Bold" Foreground="#2C3E50" TextWrapping="Wrap" Margin="0,5,0,20"/>
+
+                    <StackPanel Grid.Row="2" VerticalAlignment="Top" Margin="10,0,0,0">
+                        <RadioButton x:Name="OptionARadio" Content="Option A" FontSize="14" Margin="0,0,0,12" GroupName="SecurityQuizGroup"/>
+                        <RadioButton x:Name="OptionBRadio" Content="Option B" FontSize="14" Margin="0,0,0,12" GroupName="SecurityQuizGroup"/>
+                        <RadioButton x:Name="OptionCRadio" Content="Option C" FontSize="14" Margin="0,0,0,12" GroupName="SecurityQuizGroup"/>
+                        <RadioButton x:Name="OptionDRadio" Content="Option D" FontSize="14" Margin="0,0,0,12" GroupName="SecurityQuizGroup"/>
+                    </StackPanel>
+
+                    <Button x:Name="SubmitAnswerButton" Grid.Row="3" Content="Submit Answer" Width="150" Height="35" HorizontalAlignment="Right"
+                            Background="#3498DB" Foreground="White" FontWeight="Bold" Click="SubmitAnswerButton_Click"/>
                 </Grid>
             </TabItem>
 
