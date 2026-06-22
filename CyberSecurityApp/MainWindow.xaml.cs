@@ -164,6 +164,10 @@ namespace CyberSecurityApp
                 hasAskedForName = true;
                 ChatHistoryBox.AppendText($"You: {input}\n");
                 ChatHistoryBox.AppendText($"Bot: Welcome, {userName}! Type 'phishing' or 'password' to begin, or let me know if you are feeling 'worried'.\n\n");
+
+                // WIRE A: Log user authorization registration profile
+                LogActivity($"New user registration established for operator signature: '{userName}'");
+
                 ChatInputBox.Clear();
                 ChatHistoryBox.ScrollToEnd();
                 return;
@@ -174,6 +178,9 @@ namespace CyberSecurityApp
 
             // Pass string down to routing engine
             ProcessConversationNLP(input.ToLower());
+
+            // WIRE B: Log the standard chat interaction NLP evaluation
+            LogActivity($"Chatbot NLP engine executed evaluation for input string token: '{input}'");
 
             ChatInputBox.Clear();
             ChatHistoryBox.ScrollToEnd();
