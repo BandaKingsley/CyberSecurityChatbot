@@ -72,7 +72,54 @@
             </TabItem>
 
             <TabItem Header="Task Manager">
-                <Grid>
+                <Grid Margin="15">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <Border Grid.Row="0" Background="#F8F9FA" BorderBrush="#BDC3C7" BorderThickness="1" CornerRadius="4" Padding="15" Margin="0,0,0,15">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="2*"/>
+                                <ColumnDefinition Width="1.5*"/>
+                                <ColumnDefinition Width="1*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                                <TextBlock Text="Security Task Action Item:" FontWeight="Bold" Margin="0,0,0,5"/>
+                                <TextBox x:Name="TaskNameInput" Height="30" VerticalContentAlignment="Center"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="1" Margin="0,0,10,0">
+                                <TextBlock Text="Category Domain:" FontWeight="Bold" Margin="0,0,0,5"/>
+                                <ComboBox x:Name="CategoryComboBox" Height="30" SelectedIndex="0">
+                                    <ComboBoxItem Content="Network Security"/>
+                                    <ComboBoxItem Content="Access Management"/>
+                                    <ComboBoxItem Content="System Maintenance"/>
+                                    <ComboBoxItem Content="Awareness Training"/>
+                                </ComboBox>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="2" Margin="0,0,15,0">
+                                <TextBlock Text="Priority:" FontWeight="Bold" Margin="0,0,0,5"/>
+                                <ComboBox x:Name="PriorityComboBox" Height="30" SelectedIndex="0">
+                                    <ComboBoxItem Content="Low"/>
+                                    <ComboBoxItem Content="Medium"/>
+                                    <ComboBoxItem Content="High"/>
+                                    <ComboBoxItem Content="Critical"/>
+                                </ComboBox>
+                            </StackPanel>
+
+                            <Button x:Name="AddTaskButton" Grid.Column="3" Content="Commit Task" Width="120" Height="30" VerticalAlignment="Bottom"
+                                    Background="#2ECC71" Foreground="White" FontWeight="Bold" Click="AddTaskButton_Click"/>
+                        </Grid>
+                    </Border>
+
+                    <DataGrid x:Name="TasksDataGrid" Grid.Row="1" AutoGenerateColumns="True" 
+                              Background="White" BorderBrush="#BDC3C7" AlternatingRowBackground="#F9FAFB" 
+                              IsReadOnly="True" RowHeaderWidth="0"/>
                 </Grid>
             </TabItem>
 

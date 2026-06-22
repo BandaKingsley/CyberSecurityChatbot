@@ -1,7 +1,10 @@
-﻿using System;
+﻿#pragma warning disable CS0618 // Ignore obsolete SQL Server library warnings smoothly
+using System;
 using System.Collections.Generic;
+using System.Data.SqlClient;
 using System.Media;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 
 namespace CyberSecurityApp
@@ -13,6 +16,9 @@ namespace CyberSecurityApp
         private bool hasAskedForName = false;
         private string userFavoriteTopic = "None";
         private string lastTrackedTopic = "None";
+
+        // Synchronized directly with live LocalDB instance from SSMS
+        private string connectionString = @"Server=(localdb)\MSSQLLocalDB;Database=SecurityLogDB;Trusted_Connection=True;TrustServerCertificate=True;";
 
         // --- Track last tip indices to prevent duplicates ---
         private int lastPhishingTipIndex = -1;
@@ -40,6 +46,9 @@ namespace CyberSecurityApp
 
             // Setup initial system state when window loads
             SetupInitialSystemState();
+
+            // Pull active rows into the data grid automatically on startup
+            LoadSecurityTasksFromDatabase();
         }
 
         // --- Setup Initial State ---
@@ -174,6 +183,73 @@ namespace CyberSecurityApp
             else
             {
                 ChatHistoryBox.AppendText("Bot: Input token unmapped. Try utilizing core context keywords like 'password', 'phishing', or run a system state inquiry using 'remember'.\n\n");
+            }
+        }
+
+        // ==========================================
+        //  DATABASE METHODS FOR THE TASK MANAGER TAB
+        // ==========================================
+
+        private void LoadSecurityTasksFromDatabase()
+        {
+            try
+            {
+                using (SqlConnection conn = new SqlConnection(connectionString))
+                {
+                    conn.Open();
+                    string query = "SELECT TaskID as 'ID', TaskName as 'Action Item', Category as 'Domain', Priority, DateAssigned as 'Timestamp' FROM SecurityTasks";
+
+                    using (SqlCommand cmd = new SqlCommand(query, conn))
+                    {
+                        using (SqlDataReader reader = cmd.ExecuteReader())
+                        {
+                            System.Data.DataTable dt = new System.Data.DataTable();
+                            dt.Load(reader);
+                            TasksDataGrid.ItemsSource = dt.DefaultView;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Database Link Offline: {ex.Message}", "System Stream Status", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        private void AddTaskButton_Click(object sender, RoutedEventArgs e)
+        {
+            string taskName = TaskNameInput.Text.Trim();
+            string category = (CategoryComboBox.SelectedItem as ComboBoxItem)?.Content.ToString();
+            string priority = (PriorityComboBox.SelectedItem as ComboBoxItem)?.Content.ToString();
+
+            if (string.IsNullOrEmpty(taskName))
+            {
+                MessageBox.Show("Please specify a baseline task action description before committing.", "Validation Alert", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            try
+            {
+                using (SqlConnection conn = new SqlConnection(connectionString))
+                {
+                    conn.Open();
+                    string query = "INSERT INTO SecurityTasks (TaskName, Category, Priority) VALUES (@name, @cat, @pri)";
+
+                    using (SqlCommand cmd = new SqlCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@name", taskName);
+                        cmd.Parameters.AddWithValue("@cat", category);
+                        cmd.Parameters.AddWithValue("@pri", priority);
+                        cmd.ExecuteNonQuery();
+                    }
+                }
+
+                TaskNameInput.Clear();
+                LoadSecurityTasksFromDatabase();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Failed to append data log stream: {ex.Message}", "Database Execution Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
     }
