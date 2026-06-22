@@ -87,38 +87,47 @@ namespace CyberSecurityApp
         {
             InitializeComponent();
 
-            // Setup initial system state when window loads
             SetupInitialSystemState();
-
-            // Pull active rows into the data grid automatically on startup
             LoadSecurityTasksFromDatabase();
-
-            // Fire up the Quiz Tab with its initial question stream state
             DisplayActiveQuizQuestion();
         }
 
-        // --- NEW: Activity Logger Method ---
+        // Method to log system activity
         private void LogActivity(string actionDescription)
         {
             string timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
             AuditLogListBox.Items.Add($"[{timestamp}] SUCCESS: {actionDescription}");
+
+            try
+            {
+                using (SqlConnection conn = new SqlConnection(connectionString))
+                {
+                    conn.Open();
+                    string query = "INSERT INTO AuditLogs (Timestamp, ActionDetails) VALUES (@time, @details)";
+                    using (SqlCommand cmd = new SqlCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@time", DateTime.Now);
+                        cmd.Parameters.AddWithValue("@details", actionDescription);
+                        cmd.ExecuteNonQuery();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Log storage error: {ex.Message}");
+            }
         }
 
         // --- Setup Initial State ---
         private void SetupInitialSystemState()
         {
-            // Clear any existing text in chat history first
             ChatHistoryBox.Clear();
-
-            // Append a clean divider made of hyphens
             ChatHistoryBox.Text += "--------------------------------------------------------\n";
             ChatHistoryBox.Text += "  CYBERSECURITY RISK ASSESSMENT HUB TERMINAL v1.0       \n";
             ChatHistoryBox.Text += "--------------------------------------------------------\n\n";
 
-            // Ask for the user's name explicitly
             ChatHistoryBox.Text += "Bot: Hello! Welcome to the cybersecurity hub. Before we begin, what is your name?\n\n";
 
-            // Suppresses targeted OS platform warnings smoothly for the audio stream
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
                 try
@@ -132,7 +141,6 @@ namespace CyberSecurityApp
                 }
             }
 
-            // Explicitly commit the initial launch event to our new tab tracker
             LogActivity("Application initialized and secure terminal interface opened.");
         }
 
@@ -146,7 +154,7 @@ namespace CyberSecurityApp
             if (e.Key == Key.Enter)
             {
                 ExecuteChatSubmission();
-                e.Handled = true; // Prevents annoying default Windows error ding sound
+                e.Handled = true;
             }
         }
 
@@ -157,7 +165,6 @@ namespace CyberSecurityApp
             if (string.IsNullOrEmpty(input))
                 return;
 
-            // Step 1: Capture Name State Prior to running main conversation logic
             if (string.IsNullOrEmpty(userName))
             {
                 userName = input;
@@ -165,7 +172,6 @@ namespace CyberSecurityApp
                 ChatHistoryBox.AppendText($"You: {input}\n");
                 ChatHistoryBox.AppendText($"Bot: Welcome, {userName}! Type 'phishing' or 'password' to begin, or let me know if you are feeling 'worried'.\n\n");
 
-                // WIRE A: Log user authorization registration profile
                 LogActivity($"New user registration established for operator signature: '{userName}'");
 
                 ChatInputBox.Clear();
@@ -173,13 +179,10 @@ namespace CyberSecurityApp
                 return;
             }
 
-            // Echo User Output Stream
             ChatHistoryBox.AppendText($"You: {input}\n");
 
-            // Pass string down to routing engine
             ProcessConversationNLP(input.ToLower());
 
-            // WIRE B: Log the standard chat interaction NLP evaluation
             LogActivity($"Chatbot NLP engine executed evaluation for input string token: '{input}'");
 
             ChatInputBox.Clear();
