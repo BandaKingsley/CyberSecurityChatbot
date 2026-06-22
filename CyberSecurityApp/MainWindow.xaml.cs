@@ -89,6 +89,7 @@ namespace CyberSecurityApp
 
             SetupInitialSystemState();
             LoadSecurityTasksFromDatabase();
+            LoadAuditLogsFromDatabase();
             DisplayActiveQuizQuestion();
         }
 
@@ -115,6 +116,32 @@ namespace CyberSecurityApp
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Log storage error: {ex.Message}");
+            }
+        }
+
+        private void LoadAuditLogsFromDatabase()
+        {
+            try
+            {
+                using (SqlConnection conn = new SqlConnection(connectionString))
+                {
+                    conn.Open();
+                    string query = "SELECT Timestamp, ActionDetails FROM AuditLogs ORDER BY Timestamp ASC";
+                    using (SqlCommand cmd = new SqlCommand(query, conn))
+                    using (SqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        AuditLogListBox.Items.Clear();
+                        while (reader.Read())
+                        {
+                            string logEntry = $"[{reader["Timestamp"]}] SUCCESS: {reader["ActionDetails"]}";
+                            AuditLogListBox.Items.Add(logEntry);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"History load failed: {ex.Message}");
             }
         }
 
